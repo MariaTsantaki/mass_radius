@@ -137,7 +137,7 @@ if args.plx_switch == 'on':
     padova_params = []
 
     for i, x in enumerate(star_name[:]):
-        padova_params.append(get_mass_radius(star_name[i], star_vmag[i], star_par[i], star_erpar[i], star_teff[i], star_erteff[i], star_metal[i], star_ermetal[i]))
+        padova_params.append(get_mass_radius(star_name[i], star_vmag[i],  star_ervmag[i], star_par[i], star_erpar[i], star_teff[i], star_erteff[i], star_metal[i], star_ermetal[i]))
 
     star_mass_padova = np.column_stack(padova_params)[0]
     star_ermass_padova = np.column_stack(padova_params)[1]
