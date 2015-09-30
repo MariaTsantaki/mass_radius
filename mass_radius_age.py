@@ -47,14 +47,14 @@ def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
     dlogg = np.round(dlogg,2)
     return logg, dlogg
 
-def get_mass_radius(star, vmag, parallax, er_parallax, temp, er_temp, metal, er_metal):
+def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, metal, er_metal):
     """Returns mass, radius, and age from padova interface.
        Enter star, vmag, parallax, er_parallax, temp, er_temp, metal, er_metal
        Be careful with the constrains in age!
     """
     url = 'http://stev.oapd.inaf.it/cgi-bin/param'
     #These are the parameters in the webpage to tune
-    form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': temp, 'star_sigteff': er_temp, 'star_feh': metal, 'star_sigfeh': er_metal,  'star_vmag': vmag, 'star_sigvmag': '0.02', 'star_parallax': parallax, 'star_sigparallax': er_parallax,  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'submit_form': 'Submit' }
+    form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': temp, 'star_sigteff': er_temp, 'star_feh': metal, 'star_sigfeh': er_metal,  'star_vmag': vmag, 'star_sigvmag': er_vmag, 'star_parallax': parallax, 'star_sigparallax': er_parallax,  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'submit_form': 'Submit' }
     print form_data
     urllib.urlretrieve(url, 'parameters.html', lambda x,y,z:0, urllib.urlencode(form_data))
 
