@@ -11,29 +11,36 @@ parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are incl
 args = parser.parse_args()
 
 def bcflow(teff):
-    """Table 1 from Torres 2010: Bolometric Corrections by Flower (1996) as a Function of Temperature: BC_V = a + b(log T_eff) + c(log T_eff)^2 + sdot sdot sdot
-
+    """Table 1 from Torres 2010: Bolometric Corrections by Flower (1996) as a Function of Temperature:
+    BC_V = a + b(log T_eff) + c(log T_eff)^2 + sdot sdot sdot
     Coefficient	log T_eff < 3.70	3.70 < log T_eff < 3.90	   log T_eff>3.90
     a	       -0.190537291496456E+05	-0.370510203809015E+05	-0.118115450538963E+06
     b	        0.155144866764412E+05	 0.385672629965804E+05	 0.137145973583929E+06
     c	       -0.421278819301717E+04	-0.150651486316025E+05	-0.636233812100225E+05
     d	        0.381476328422343E+03	 0.261724637119416E+04	 0.147412923562646E+05
-    e	                    ... 	-0.170623810323864E+03	-0.170587278406872E+04
-    f	                    ... 	            ... 	 0.788731721804990E+02
+    e	                    ... 	    -0.170623810323864E+03	-0.170587278406872E+04
+    f	                    ... 	            ... 	         0.788731721804990E+02
     """
+
+    a = [-0.190537291496456e+05, -0.370510203809015e+05, -0.118115450538963e+06]
+    b = [0.155144866764412e+05, 0.385672629965804e+05, 0.137145973583929e+06]
+    c = [-0.421278819301717e+04, -0.150651486316025e+05, -0.636233812100225e+05]
+    d = [0.381476328422343e+03, 0.261724637119416e+04, 0.147412923562646e+05]
+    e = [-0.170623810323864e+03, -0.170587278406872e+04]
+    f = [0.788731721804990e+02]
 
     lteff= np.log10(teff)
     new_bc = []
     for teff_value in lteff:
-        if teff_value<3.7:
-	    bc=-0.190537291496456e+05+(0.155144866764412e+05*teff_value)-(0.421278819301717e+04*(teff_value**2))+(0.381476328422343e+03*(teff_value**3))
+        if teff_value < 3.7:
+	        bc = a[0] + (b[0]*teff_value) + (c[0]*(teff_value**2)) + (d[0]*(teff_value**3))
             new_bc.append(bc)
-	elif teff_value>=3.7 and teff_value<3.9:
-	    bc=-0.370510203809015e+05+(0.385672629965804e+05*teff_value)-(0.150651486316025e+05*(teff_value**2))+(0.261724637119416e+04*(teff_value**3))-(0.170623810323864e+03*(teff_value**4))
+	    elif (teff_value >= 3.7) and (teff_value < 3.9):
+	        bc = a[1] + (b[1]*teff_value) + (c[1]*(teff_value**2)) + (d[1]*(teff_value**3)) + (e[0]*(teff_value**4))
             new_bc.append(bc)
-	elif teff_value>=3.9:
-	    bc=-0.118115450538963e+06+(0.137145973583929e+06*teff_value)-(0.636233812100225e+05*(teff_value**2))+(0.147412923562646e+05*(teff_value**3))-(0.170587278406872E+04*(teff_value**4))+(0.788731721804990e+02*(teff_value)**5)
-	    new_bc.append(bc)
+	    elif teff_value >= 3.9:
+	        bc = a[2] + (b[2]*teff_value) + (c[2]*(teff_value**2)) + (d[2]*(teff_value**3)) + (e[1]*(teff_value**4)) + (f[0]*(teff_value)**5)
+	        new_bc.append(bc)
     return new_bc
 
 
@@ -41,7 +48,7 @@ def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
     """Calculate the trigonometric logg and error"""
     #np.geterr()
     e = 2.718281828
-    logg  = 4.44 + np.log10(mass) + 4.*np.log10(teff/5777.) + 0.4*(v+bc) + 2.*np.log10(par/1000.)+0.108
+    logg  = 4.44 + np.log10(mass) + (4.0*np.log10(teff/5777.)) + (0.4*(v + bc)) + (2.0*np.log10(par/1000.0)) + 0.108
     logg  = np.round(logg,2)
     dlogg = np.sqrt(((dmass*np.log10(e))/mass)**2 + ((4.*dteff*np.log10(e))/teff)**2 + ((2.*0.05*np.log10(e))/par)**2)
     dlogg = np.round(dlogg,2)
