@@ -33,14 +33,14 @@ def bcflow(teff):
     new_bc = []
     for teff_value in lteff:
         if teff_value < 3.7:
-	        bc = a[0] + (b[0]*teff_value) + (c[0]*(teff_value**2)) + (d[0]*(teff_value**3))
+            bc = a[0] + (b[0]*teff_value) + (c[0]*(teff_value**2)) + (d[0]*(teff_value**3))
             new_bc.append(bc)
-	    elif (teff_value >= 3.7) and (teff_value < 3.9):
-	        bc = a[1] + (b[1]*teff_value) + (c[1]*(teff_value**2)) + (d[1]*(teff_value**3)) + (e[0]*(teff_value**4))
+        elif (teff_value >= 3.7) and (teff_value < 3.9):
+            bc = a[1] + (b[1]*teff_value) + (c[1]*(teff_value**2)) + (d[1]*(teff_value**3)) + (e[0]*(teff_value**4))
             new_bc.append(bc)
-	    elif teff_value >= 3.9:
-	        bc = a[2] + (b[2]*teff_value) + (c[2]*(teff_value**2)) + (d[2]*(teff_value**3)) + (e[1]*(teff_value**4)) + (f[0]*(teff_value)**5)
-	        new_bc.append(bc)
+        elif teff_value >= 3.9:
+            bc = a[2] + (b[2]*teff_value) + (c[2]*(teff_value**2)) + (d[2]*(teff_value**3)) + (e[1]*(teff_value**4)) + (f[0]*(teff_value)**5)
+            new_bc.append(bc)
     return new_bc
 
 
