@@ -58,12 +58,14 @@ def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
 def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, metal, er_metal):
     """Returns mass, radius, and age from padova interface.
        Enter star, vmag, parallax, er_parallax, temp, er_temp, metal, er_metal
+       Parallax is in mas.
        Be careful with the constrains in age!
     """
     url = 'http://stev.oapd.inaf.it/cgi-bin/param'
     #These are the parameters in the webpage to tune
     form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': int(temp), 'star_sigteff': int(er_temp), 'star_feh': round(metal,2), 'star_sigfeh': round(er_metal,2),  'star_vmag': round(vmag,3), 'star_sigvmag': round(er_vmag,3), 'star_parallax': round(parallax,3), 'star_sigparallax': round(er_parallax,3),  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'submit_form': 'Submit' }
-    print form_data
+    print('Parameters for Padova interface.')
+    print(form_data)
     urllib.urlretrieve(url, 'parameters.html', lambda x,y,z:0, urllib.urlencode(form_data))
 
     #write results
@@ -100,7 +102,7 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
 def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
     """Calculate masses and radii from the calibration of Torres et al. 2010"""
 
-    #coefficients
+    # coefficients
     a  = [1.5689, 1.3787, 0.4243, 1.139, -0.1425, 0.01969,0.1010]
     da = [0.058, 0.029, 0.029, 0.240, 0.011, 0.0019, 0.014]
     b  = [2.4427, 0.6679, 0.1771, 0.705, -0.21415, 0.02306, 0.04173]
@@ -110,7 +112,7 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
     dX = dT/T
     log_M = a[0] + (a[1]*X) + (a[2]*(X**2)) + (a[3]*(X**3)) + (a[4]*(logg**2)) + (a[5]*(logg**3)) + (a[6]*fe)
     log_R = b[0] + (b[1]*X) + (b[2]*(X**2)) + (b[3]*(X**3)) + (b[4]*(logg**2)) + (b[5]*(logg**3)) + (b[6]*fe)
-    #must check the errors
+    # must check the errors
     dlog_M = np.sqrt((da[0]**2) + ((a[1]*dX)**2) + ((da[1]*X)**2) + ((da[2]*(X**2))**2) + ((a[2]*2*X*dX)**2) + ((da[3]*(X**3))**2) + ((a[3]*3*X*X*dX)**2) + ((da[4]*(logg**2))**2) + ((a[4]*2*logg*dlogg)**2) + ((da[5]*(logg**3))**2) + ((a[5]*3*logg*logg*dlogg)**2) + ((da[6]*fe)**2) + ((a[6]*dfe)**2))
     dlog_R = np.sqrt((db[0]**2) + ((b[1]*dX)**2) + ((db[1]*X)**2) + ((db[2]*(X**2))**2) + ((b[2]*2*X*dX)**2) + ((db[3]*(X**3))**2) + ((b[3]*3*X*X*dX)**2) + ((db[4]*(logg**2))**2) + ((b[4]*2*logg*dlogg)**2) + ((db[5]*(logg**3))**2) + ((b[5]*3*logg*logg*dlogg)**2) + ((db[6]*fe)**2) + ((b[6]*dfe)**2))
     Mt = np.power(10,log_M)
