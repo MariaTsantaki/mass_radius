@@ -10,6 +10,25 @@ parser = argparse.ArgumentParser(description='set flag if there is information o
 parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are included by default', default=['on'])
 args = parser.parse_args()
 
+def _output(header=False, parameters=None):
+    """Create the output file 'synthresults.dat'
+
+    Input
+    -----
+    overwrite - Overwrite the file
+    header    - Only use True if this is for the file to be created
+    """
+    if header:
+        hdr = ['star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal']
+
+        with open('stellar_characterization.dat', 'w') as output:
+            output.write('\t'.join(hdr)+'\n')
+
+    else:
+        with open('stellar_characterization.dat', 'a') as output:
+            output.write('\t'.join(map(str, parameters))+'\n')
+
+
 def bcflow(teff):
     """Table 1 from Torres 2010: Bolometric Corrections by Flower (1996) as a Function of Temperature:
     BC_V = a + b(log T_eff) + c(log T_eff)^2 + sdot sdot sdot
@@ -30,28 +49,27 @@ def bcflow(teff):
     f = [0.788731721804990e+02]
 
     lteff= np.log10(teff)
-    new_bc = []
-    for teff_value in lteff:
-        if teff_value < 3.7:
-            bc = a[0] + (b[0]*teff_value) + (c[0]*(teff_value**2)) + (d[0]*(teff_value**3))
-            new_bc.append(bc)
-        elif (teff_value >= 3.7) and (teff_value < 3.9):
-            bc = a[1] + (b[1]*teff_value) + (c[1]*(teff_value**2)) + (d[1]*(teff_value**3)) + (e[0]*(teff_value**4))
-            new_bc.append(bc)
-        elif teff_value >= 3.9:
-            bc = a[2] + (b[2]*teff_value) + (c[2]*(teff_value**2)) + (d[2]*(teff_value**3)) + (e[1]*(teff_value**4)) + (f[0]*(teff_value)**5)
-            new_bc.append(bc)
-    return new_bc
+    if lteff < 3.7:
+        bc = a[0] + (b[0]*lteff) + (c[0]*(lteff**2)) + (d[0]*(lteff**3))
+    elif (lteff >= 3.7) and (lteff < 3.9):
+        bc = a[1] + (b[1]*lteff) + (c[1]*(lteff**2)) + (d[1]*(lteff**3)) + (e[0]*(lteff**4))
+    elif lteff >= 3.9:
+        bc = a[2] + (b[2]*lteff) + (c[2]*(lteff**2)) + (d[2]*(lteff**3)) + (e[1]*(lteff**4)) + (f[0]*(lteff)**5)
+    return bc
 
 
 def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
     """Calculate the trigonometric logg and error"""
     #np.geterr()
-    e = 2.718281828
-    logg  = 4.44 + np.log10(mass) + (4.0*np.log10(teff/5777.)) + (0.4*(v + bc)) + (2.0*np.log10(par/1000.0)) + 0.108
-    logg  = np.round(logg,2)
-    dlogg = np.sqrt(((dmass*np.log10(e))/mass)**2 + ((4.*dteff*np.log10(e))/teff)**2 + ((2.*0.05*np.log10(e))/par)**2)
-    dlogg = np.round(dlogg,2)
+    if mass == 'nan':
+        logg, dlogg = 'nan', 'nan'
+
+    else:
+        e = 2.718281828
+        logg  = 4.44 + np.log10(mass) + (4.0*np.log10(teff/5777.)) + (0.4*(v + bc)) + (2.0*np.log10(par/1000.0)) + 0.108
+        logg  = np.round(logg,2)
+        dlogg = np.sqrt(((dmass*np.log10(e))/mass)**2 + ((4.*dteff*np.log10(e))/teff)**2 + ((2.*0.05*np.log10(e))/par)**2)
+        dlogg = np.round(dlogg,2)
     return logg, dlogg
 
 
@@ -63,7 +81,7 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
     """
     url = 'http://stev.oapd.inaf.it/cgi-bin/param'
     #These are the parameters in the webpage to tune
-    form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': int(temp), 'star_sigteff': int(er_temp), 'star_feh': round(metal,2), 'star_sigfeh': round(er_metal,2),  'star_vmag': round(vmag,3), 'star_sigvmag': round(er_vmag,3), 'star_parallax': round(parallax,3), 'star_sigparallax': round(er_parallax,3),  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'submit_form': 'Submit' }
+    form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': int(temp), 'star_sigteff': int(er_temp), 'star_feh': round(metal,2), 'star_sigfeh': round(er_metal,2),  'star_vmag': round(vmag,3), 'star_sigvmag': round(er_vmag,3), 'star_parallax': round(parallax,3), 'star_sigparallax': round(er_parallax,3),  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'photsys_file': 'tab_mag_odfnew/tab_mag_ubvrijhk.dat', 'submit_form': 'Submit' }
     print('Parameters for Padova interface.')
     print(form_data)
     urllib.urlretrieve(url, 'parameters.html', lambda x,y,z:0, urllib.urlencode(form_data))
@@ -103,10 +121,10 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
     """Calculate masses and radii from the calibration of Torres et al. 2010"""
 
     # coefficients
-    a  = [1.5689, 1.3787, 0.4243, 1.139, -0.1425, 0.01969,0.1010]
-    da = [0.058, 0.029, 0.029, 0.240, 0.011, 0.0019, 0.014]
+    a  = [1.5689, 1.3787, 0.4243, 1.139, -0.1425,  0.01969, 0.1010]
+    da = [0.058,  0.029,  0.029,  0.240, 0.011,    0.0019,  0.014]
     b  = [2.4427, 0.6679, 0.1771, 0.705, -0.21415, 0.02306, 0.04173]
-    db = [0.038, 0.016, 0.027, 0.13, 0.0075, 0.0013, 0.0082]
+    db = [0.038,  0.016,  0.027,  0.13,  0.0075,   0.0013,  0.0082]
 
     X = np.log10(T) - 4.1
     dX = dT/T
@@ -134,6 +152,8 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
 if args.plx_switch == 'on':
     print 'Calculating masses from Padova interface.'
 
+    _output(header=True)
+
     star = np.genfromtxt('star', dtype=None, delimiter='\t', skip_header=2, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
     star_name =    star['star']
     star_vmag =    star['V']
@@ -151,26 +171,15 @@ if args.plx_switch == 'on':
     #Padova mass, radius, age, and logg from isochrones
     padova_params = []
     for i, x in enumerate(star_name[:]):
-        padova_params.append(get_mass_radius(star_name[i], star_vmag[i],  star_ervmag[i], star_par[i], star_erpar[i], star_teff[i], star_erteff[i], star_metal[i], star_ermetal[i]))
+        mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(star_name[i], star_vmag[i],  star_ervmag[i], star_par[i], star_erpar[i], star_teff[i], star_erteff[i], star_metal[i], star_ermetal[i])
+        #Trigonometric logg. Uses the get_mass_radius function
+        bc = bcflow(star_teff[i])
+        logg_hip, erlogg_hip = logg_trigomonetric(star_teff[i], mass_padova, star_vmag[i], bc, star_par[i], star_erpar[i], star_erteff[i], ermass_padova)
+        #Mass and radius from Torres calibration
+        name, Rt, dRt, Mcal, dMcal = mass_torres(star_name[i], star_teff[i], star_logg[i], star_metal[i], star_erteff[i], star_erlogg[i], star_ermetal[i])
 
-    star_mass_padova     = np.column_stack(padova_params)[0]
-    star_ermass_padova   = np.column_stack(padova_params)[1]
-    star_radius_padova   = np.column_stack(padova_params)[2]
-    star_erradius_padova = np.column_stack(padova_params)[3]
-    star_age             = np.column_stack(padova_params)[4]
-    star_erage           = np.column_stack(padova_params)[5]
-    star_logg_padova     = np.column_stack(padova_params)[6]
-    star_erlogg_padova   = np.column_stack(padova_params)[7]
-
-    #Trigonometric logg. Uses the get_mass_radius function
-    bc = bcflow(star_teff)
-    logg_hip, erlogg_hip = logg_trigomonetric(star_teff, star_mass_padova, star_vmag, bc, star_par, star_erpar, star_erteff, star_ermass_padova)
-
-    #Mass and radius from Torres calibration
-    name, Rt, dRt, Mcal, dMcal = mass_torres(star_name, star_teff, star_logg, star_metal, star_erteff, star_erlogg, star_ermetal)
-    header = 'star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal'
-    data = np.column_stack((star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal))
-    np.savetxt('stellar_characterization.dat', data, delimiter='\t', fmt="%s", header=header)
+        parameters = [name, star_teff[i], star_erteff[i], star_logg[i], star_erlogg[i], star_metal[i], star_ermetal[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
+        _output(parameters=parameters)
 
 elif args.plx_switch == 'off':
     print 'Mass and Radius from Torres calibration'
