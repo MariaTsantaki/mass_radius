@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description='set flag if there is information o
 parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are included by default', default=['on'])
 args = parser.parse_args()
 
-def _output(header=False, parameters=None):
+def _output(header=False, parameters=None, switch='on'):
     """Create the output file 'synthresults.dat'
 
     Input
@@ -18,9 +18,13 @@ def _output(header=False, parameters=None):
     overwrite - Overwrite the file
     header    - Only use True if this is for the file to be created
     """
-    if header:
+    if header and switch='on':
         hdr = ['star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal']
+        with open('stellar_characterization.dat', 'w') as output:
+            output.write('\t'.join(hdr)+'\n')
 
+    if header and switch='off':
+        hdr = 'star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, Rt, dRt, Mcal, dMcal'
         with open('stellar_characterization.dat', 'w') as output:
             output.write('\t'.join(hdr)+'\n')
 
@@ -152,7 +156,7 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
 if args.plx_switch == 'on':
     print 'Calculating masses from Padova interface.'
 
-    _output(header=True)
+    _output(header=True, switch='on')
 
     star = np.genfromtxt('star', dtype=None, delimiter='\t', skip_header=2, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
     star_name =    star['star']
@@ -167,10 +171,8 @@ if args.plx_switch == 'on':
     star_metal =   star['feh']
     star_ermetal = star['erfeh']
 
-    #Calculate parameters
-    #Padova mass, radius, age, and logg from isochrones
-    padova_params = []
     for i, x in enumerate(star_name[:]):
+        #Padova mass, radius, age, and logg from isochrones
         mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(star_name[i], star_vmag[i],  star_ervmag[i], star_par[i], star_erpar[i], star_teff[i], star_erteff[i], star_metal[i], star_ermetal[i])
         #Trigonometric logg. Uses the get_mass_radius function
         bc = bcflow(star_teff[i])
@@ -183,8 +185,10 @@ if args.plx_switch == 'on':
 
 elif args.plx_switch == 'off':
     print 'Mass and Radius from Torres calibration'
-    star = np.genfromtxt('star', dtype=None, skip_header=2, usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
 
+    _output(header=True, switch='on')
+
+    star = np.genfromtxt('star', dtype=None, skip_header=2, usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
     star_name    = star['star']
     star_teff    = star['teff']
     star_erteff  = star['erteff']
@@ -194,11 +198,11 @@ elif args.plx_switch == 'off':
     star_ermetal = star['erfeh']
 
     #Calculate parameters
-    #Mass and radius from Torres calibration
-    name, Rt, dRt, Mcal, dMcal = mass_torres(star_name, star_teff, star_logg, star_metal, star_erteff, star_erlogg, star_ermetal)
-    header = 'star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, Rt, dRt, Mcal, dMcal'
-    data = np.column_stack((star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, Rt, dRt, Mcal, dMcal))
-    np.savetxt('stellar_characterization.dat', data, delimiter='\t', fmt="%s", header=header)
+    for i, x in enumerate(star_name[:]):
+        # Mass and radius from Torres calibration
+        name, Rt, dRt, Mcal, dMcal = mass_torres(star_name[i], star_teff[i], star_logg[i], star_metal[i], star_erteff[i], star_erlogg[i], star_ermetal[i])
+        parameters = [name, star_teff[i], star_erteff[i], star_logg[i], star_erlogg[i], star_metal[i], star_ermetal[i], Rt, dRt, Mcal, dMcal]
+        _output(parameters=parameters)
 
 else:
     print 'Type "on" in there are parallaxes, "off" in not'
