@@ -18,12 +18,13 @@ def _output(header=False, parameters=None, switch='on'):
     overwrite - Overwrite the file
     header    - Only use True if this is for the file to be created
     """
-    if header and switch='on':
+
+    if header and switch == 'on':
         hdr = ['star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal']
         with open('stellar_characterization.dat', 'w') as output:
             output.write('\t'.join(hdr)+'\n')
 
-    if header and switch='off':
+    elif header and switch == 'off':
         hdr = 'star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, Rt, dRt, Mcal, dMcal'
         with open('stellar_characterization.dat', 'w') as output:
             output.write('\t'.join(hdr)+'\n')
@@ -83,7 +84,7 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
        Parallax is in mas.
        Be careful with the constrains in age!
     """
-    url = 'http://stev.oapd.inaf.it/cgi-bin/param'
+    url = 'http://stev.oapd.inaf.it/cgi-bin/param_1.3'
     #These are the parameters in the webpage to tune
     form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': int(temp), 'star_sigteff': int(er_temp), 'star_feh': round(metal,2), 'star_sigfeh': round(er_metal,2),  'star_vmag': round(vmag,3), 'star_sigvmag': round(er_vmag,3), 'star_parallax': round(parallax,3), 'star_sigparallax': round(er_parallax,3),  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'photsys_file': 'tab_mag_odfnew/tab_mag_ubvrijhk.dat', 'submit_form': 'Submit' }
     print('Parameters for Padova interface.')
@@ -92,7 +93,7 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
 
     #write results
     with open('parameters.html') as f:
-        line = f.readlines()[19]
+        line = f.readlines()[15]
 
     line = line.replace(' .<p>Results for ', '')
     line = line.replace('Mass=', '')
