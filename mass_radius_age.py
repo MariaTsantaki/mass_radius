@@ -3,7 +3,7 @@ import math
 import numpy as np
 import string
 import urllib
-import os, sys
+import os
 import argparse
 
 parser = argparse.ArgumentParser(description='set flag if there is information on the parallax and V mag.')
@@ -11,11 +11,10 @@ parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are incl
 args = parser.parse_args()
 
 def _output(header=False, parameters=None, switch='on'):
-    """Create the output file 'synthresults.dat'
+    """Create the output file 'stellar_characterization.dat''
 
     Input
     -----
-    overwrite - Overwrite the file
     header    - Only use True if this is for the file to be created
     """
 
@@ -72,9 +71,9 @@ def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
     else:
         e = 2.718281828
         logg  = 4.44 + np.log10(mass) + (4.0*np.log10(teff/5777.)) + (0.4*(v + bc)) + (2.0*np.log10(par/1000.0)) + 0.108
-        logg  = np.round(logg,2)
+        logg  = np.round(logg, 2)
         dlogg = np.sqrt(((dmass*np.log10(e))/mass)**2 + ((4.*dteff*np.log10(e))/teff)**2 + ((2.*0.05*np.log10(e))/par)**2)
-        dlogg = np.round(dlogg,2)
+        dlogg = np.round(dlogg, 2)
     return logg, dlogg
 
 
@@ -84,11 +83,14 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
        Parallax is in mas.
        Be careful with the constrains in age!
     """
+
     url = 'http://stev.oapd.inaf.it/cgi-bin/param_1.3'
     #These are the parameters in the webpage to tune
     form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': int(temp), 'star_sigteff': int(er_temp), 'star_feh': round(metal,2), 'star_sigfeh': round(er_metal,2),  'star_vmag': round(vmag,3), 'star_sigvmag': round(er_vmag,3), 'star_parallax': round(parallax,3), 'star_sigparallax': round(er_parallax,3),  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': '0.1e9', 'sfr_maxage': '12.0e9', 'flag_sismo': '0', 'photsys_file': 'tab_mag_odfnew/tab_mag_ubvrijhk.dat', 'submit_form': 'Submit' }
-    print('Parameters for Padova interface.')
-    print(form_data)
+    print('Parameters for %s from Padova interface.' % star)
+
+    for key, value in form_data.items():
+        print('%s -> %s' % (key, value))
     urllib.urlretrieve(url, 'parameters.html', lambda x,y,z:0, urllib.urlencode(form_data))
 
     #write results
@@ -99,16 +101,15 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
     line = line.replace('Mass=', '')
     line = line.replace('&plusmn;', ' , ')
     line = line.replace(' ','')
-    line = line.replace('<i>R</i>=','')
-    line = line.replace(':Age=',',')
-    line = line.replace('<i>M</i>&#9737','')
-    line = line.replace('<i>R</i>&#9737','')
-    line = line.replace('log<i>g</i>=','')
-    line = line.replace('(cgs)','')
-    line = line.replace('Gyr','')
+    line = line.replace('<i>R</i>=', '')
+    line = line.replace(':Age=', ',')
+    line = line.replace('<i>M</i>&#9737', '')
+    line = line.replace('<i>R</i>&#9737', '')
+    line = line.replace('log<i>g</i>=', '')
+    line = line.replace('(cgs)', '')
+    line = line.replace('Gyr', '')
     line = line.split(',')
 
-    name =     str(line[0])
     age =      float(line[1])
     erage =    float(line[2])
     mass =     float(line[3])
@@ -117,8 +118,7 @@ def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, m
     erlogg_p = float(line[6])
     radius =   float(line[7])
     erradius = float(line[8])
-    print name, ' done.'
-
+    print('---------------------%s done!----------------------------' % star)
     return mass, ermass, radius, erradius, age, erage, logg_p, erlogg_p
 
 
@@ -182,7 +182,9 @@ if args.plx_switch == 'on':
         name, Rt, dRt, Mcal, dMcal = mass_torres(star_name[i], star_teff[i], star_logg[i], star_metal[i], star_erteff[i], star_erlogg[i], star_ermetal[i])
 
         parameters = [name, star_teff[i], star_erteff[i], star_logg[i], star_erlogg[i], star_metal[i], star_ermetal[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
+        #Save results
         _output(parameters=parameters)
+        os.remove('parameters.html')
 
 elif args.plx_switch == 'off':
     print 'Mass and Radius from Torres calibration'
