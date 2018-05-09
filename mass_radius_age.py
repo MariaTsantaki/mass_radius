@@ -162,7 +162,7 @@ if args.plx_switch == 'on':
 
     _output(header=True, switch='on')
 
-    star = np.genfromtxt(args.name, dtype=None, skip_header=3, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
+    star = np.genfromtxt(args.name, dtype=None, delimiter='\t', skip_header=2, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
     star_name =    star['star']
     star_vmag =    star['V']
     star_ervmag =  star['eV']
@@ -194,7 +194,7 @@ elif args.plx_switch == 'off':
 
     _output(header=True, switch='off')
 
-    star = np.genfromtxt(args.name, dtype=None, skip_header=3, usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
+    star = np.genfromtxt(args.name, dtype=None, skip_header=2, delimiter='\t', usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
     star_name    = star['star']
     star_teff    = star['teff']
     star_erteff  = star['erteff']
