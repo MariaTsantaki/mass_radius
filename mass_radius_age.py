@@ -7,6 +7,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser(description='set flag if there is information on the parallax and V mag.')
+parser.add_argument('name', type=str, help ='File with the data')
 parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are included by default', default=['on'])
 args = parser.parse_args()
 
@@ -18,15 +19,17 @@ def _output(header=False, parameters=None, switch='on'):
     header    - Only use True if this is for the file to be created
     """
 
-    if header and switch == 'on':
+    if header and (switch == 'on'):
         hdr = ['star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal']
-        with open('stellar_characterization.dat', 'w') as output:
-            output.write('\t'.join(hdr)+'\n')
+        if not os.path.isfile('stellar_characterization.dat'):
+            with open('stellar_characterization.dat', 'w') as output:
+                output.write('\t'.join(hdr)+'\n')
 
-    elif header and switch == 'off':
+    elif header and (switch == 'off'):
         hdr = 'star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, Rt, dRt, Mcal, dMcal'
-        with open('stellar_characterization.dat', 'w') as output:
-            output.write('\t'.join(hdr)+'\n')
+        if not os.path.isfile('stellar_characterization.dat'):
+            with open('stellar_characterization.dat', 'w') as output:
+                output.write('\t'.join(hdr)+'\n')
 
     else:
         with open('stellar_characterization.dat', 'a') as output:
@@ -159,7 +162,7 @@ if args.plx_switch == 'on':
 
     _output(header=True, switch='on')
 
-    star = np.genfromtxt('star', dtype=None, delimiter='\t', skip_header=2, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
+    star = np.genfromtxt(args.name, dtype=None, skip_header=3, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
     star_name =    star['star']
     star_vmag =    star['V']
     star_ervmag =  star['eV']
@@ -189,9 +192,9 @@ if args.plx_switch == 'on':
 elif args.plx_switch == 'off':
     print 'Mass and Radius from Torres calibration'
 
-    _output(header=True, switch='on')
+    _output(header=True, switch='off')
 
-    star = np.genfromtxt('star', dtype=None, skip_header=2, usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
+    star = np.genfromtxt(args.name, dtype=None, skip_header=3, usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
     star_name    = star['star']
     star_teff    = star['teff']
     star_erteff  = star['erteff']
