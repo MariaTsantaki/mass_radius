@@ -7,10 +7,6 @@ import os
 import argparse
 import pandas as pd
 
-parser = argparse.ArgumentParser(description='set flag if there is information on the parallax and V mag.')
-parser.add_argument('name', type=str, help ='File with the data')
-parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are included by default', default=['on'])
-args = parser.parse_args()
 
 def _output(header=False, parameters=None, switch='on'):
     """Create the output file 'stellar_characterization.dat''
@@ -156,38 +152,40 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
     dRt   = np.round(dRt,2)
     return hd, Rt, dRt, Mcal, dMcal
 
-#main program
+if __name__ == '__main__':
 
-if args.plx_switch == 'on':
-    print 'Calculating masses from Padova interface.'
-    _output(header=True, switch='on')
-    params = pd.read_csv(args.name, delimiter='\t', comment='#', header=1, usecols=(range(11)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'vmag', 'ervmag', 'par', 'erpar'])
+    parser = argparse.ArgumentParser(description='set flag if there is information on the parallax and V mag.')
+    parser.add_argument('name', type=str, help ='File with the data')
+    parser.add_argument('plx_switch', type=str, help ='Parallaxes and Vmags are included by default', default=['on'])
+    args = parser.parse_args()
 
-    for i, x in enumerate(params.star[:]):
-        #Padova mass, radius, age, and logg from isochrones
-        mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(params.star[i], params.vmag[i],  params.ervmag[i], params.par[i], params.erpar[i], params.teff[i], params.erteff[i], params.feh[i], params.erfeh[i])
-        #Trigonometric logg. Uses the get_mass_radius function
-        bc = bcflow(params.teff[i])
-        logg_hip, erlogg_hip = logg_trigomonetric(params.teff[i], mass_padova, params.vmag[i], bc, params.par[i], params.erpar[i], params.erteff[i], ermass_padova)
-        #Mass and radius from Torres calibration
-        name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
+    if args.plx_switch == 'on':
+        _output(header=True, switch='on')
+        params = pd.read_csv(args.name, delimiter='\t', comment='#', header=1, usecols=(range(11)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'vmag', 'ervmag', 'par', 'erpar'])
 
-        parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
-        #Save results
-        _output(parameters=parameters)
-        os.remove('parameters.html')
+        for i, x in enumerate(params.star[:]):
+            #Padova mass, radius, age, and logg from isochrones
+            mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(params.star[i], params.vmag[i],  params.ervmag[i], params.par[i], params.erpar[i], params.teff[i], params.erteff[i], params.feh[i], params.erfeh[i])
+            #Trigonometric logg. Uses the get_mass_radius function
+            bc = bcflow(params.teff[i])
+            logg_hip, erlogg_hip = logg_trigomonetric(params.teff[i], mass_padova, params.vmag[i], bc, params.par[i], params.erpar[i], params.erteff[i], ermass_padova)
+            #Mass and radius from Torres calibration
+            name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
 
-elif args.plx_switch == 'off':
-    print 'Mass and Radius from Torres calibration'
-    _output(header=True, switch='off')
-    params = pd.read_csv(args.name, header=1, delimiter='\t', comment='#', usecols=(range(7)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
+            #Save results
+            parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
+            _output(parameters=parameters)
+            os.remove('parameters.html')
 
-    #Calculate parameters
-    for i, x in enumerate(params.star[:]):
-        # Mass and radius from Torres calibration
-        name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
-        parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], Rt, dRt, Mcal, dMcal]
-        _output(parameters=parameters)
+    elif args.plx_switch == 'off':
+        _output(header=True, switch='off')
+        params = pd.read_csv(args.name, header=1, delimiter='\t', comment='#', usecols=(range(7)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
 
-else:
-    print 'Type "on" in there are parallaxes, "off" in not'
+        for i, x in enumerate(params.star[:]):
+            # Mass and radius from Torres calibration
+            name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
+            parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], Rt, dRt, Mcal, dMcal]
+            _output(parameters=parameters)
+
+    else:
+        print 'Type "on" in there are parallaxes, "off" in not'
