@@ -5,6 +5,7 @@ import string
 import urllib
 import os
 import argparse
+import pandas as pd
 
 parser = argparse.ArgumentParser(description='set flag if there is information on the parallax and V mag.')
 parser.add_argument('name', type=str, help ='File with the data')
@@ -20,13 +21,13 @@ def _output(header=False, parameters=None, switch='on'):
     """
 
     if header and (switch == 'on'):
-        hdr = ['star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, star_mass_padova, star_ermass_padova, star_radius_padova, star_erradius_padova, star_age, star_erage, star_logg_padova, star_erlogg_padova, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal']
+        hdr = ['star_name star_teff star_erteff star_logg star_erlogg star_metal star_ermetal star_mass_padova star_ermass_padova star_radius_padova star_erradius_padova star_age star_erage star_logg_padova star_erlogg_padova logg_hip erlogg_hip Rt dRt Mcal dMcal']
         if not os.path.isfile('stellar_characterization.dat'):
             with open('stellar_characterization.dat', 'w') as output:
                 output.write('\t'.join(hdr)+'\n')
 
     elif header and (switch == 'off'):
-        hdr = 'star_name, star_teff, star_erteff, star_logg, star_erlogg, star_metal, star_ermetal, Rt, dRt, Mcal, dMcal'
+        hdr = 'star_name star_teff star_erteff star_logg star_erlogg star_metal star_ermetal Rt dRt Mcal dMcal'
         if not os.path.isfile('stellar_characterization.dat'):
             with open('stellar_characterization.dat', 'w') as output:
                 output.write('\t'.join(hdr)+'\n')
@@ -49,9 +50,9 @@ def bcflow(teff):
     """
 
     a = [-0.190537291496456e+05, -0.370510203809015e+05, -0.118115450538963e+06]
-    b = [0.155144866764412e+05, 0.385672629965804e+05, 0.137145973583929e+06]
+    b = [0.155144866764412e+05,   0.385672629965804e+05,  0.137145973583929e+06]
     c = [-0.421278819301717e+04, -0.150651486316025e+05, -0.636233812100225e+05]
-    d = [0.381476328422343e+03, 0.261724637119416e+04, 0.147412923562646e+05]
+    d = [0.381476328422343e+03,   0.261724637119416e+04,  0.147412923562646e+05]
     e = [-0.170623810323864e+03, -0.170587278406872e+04]
     f = [0.788731721804990e+02]
 
@@ -159,55 +160,33 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
 
 if args.plx_switch == 'on':
     print 'Calculating masses from Padova interface.'
-
     _output(header=True, switch='on')
+    params = pd.read_csv(args.name, delimiter='\t', comment='#', header=1, usecols=(range(11)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'vmag', 'ervmag', 'par', 'erpar'])
 
-    star = np.genfromtxt(args.name, dtype=None, delimiter='\t', skip_header=2, usecols=(0,1,2,3,4,5,6,7,8,9,10), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'V', 'eV', 'Plx', 'e_Plx'])
-    star_name =    star['star']
-    star_vmag =    star['V']
-    star_ervmag =  star['eV']
-    star_par =     star['Plx']
-    star_erpar =   star['e_Plx']
-    star_teff =    star['teff']
-    star_erteff =  star['erteff']
-    star_logg =    star['logg']
-    star_erlogg =  star['erlogg']
-    star_metal =   star['feh']
-    star_ermetal = star['erfeh']
-
-    for i, x in enumerate(star_name[:]):
+    for i, x in enumerate(params.star[:]):
         #Padova mass, radius, age, and logg from isochrones
-        mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(star_name[i], star_vmag[i],  star_ervmag[i], star_par[i], star_erpar[i], star_teff[i], star_erteff[i], star_metal[i], star_ermetal[i])
+        mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(params.star[i], params.vmag[i],  params.ervmag[i], params.par[i], params.erpar[i], params.teff[i], params.erteff[i], params.feh[i], params.erfeh[i])
         #Trigonometric logg. Uses the get_mass_radius function
-        bc = bcflow(star_teff[i])
-        logg_hip, erlogg_hip = logg_trigomonetric(star_teff[i], mass_padova, star_vmag[i], bc, star_par[i], star_erpar[i], star_erteff[i], ermass_padova)
+        bc = bcflow(params.teff[i])
+        logg_hip, erlogg_hip = logg_trigomonetric(params.teff[i], mass_padova, params.vmag[i], bc, params.par[i], params.erpar[i], params.erteff[i], ermass_padova)
         #Mass and radius from Torres calibration
-        name, Rt, dRt, Mcal, dMcal = mass_torres(star_name[i], star_teff[i], star_logg[i], star_metal[i], star_erteff[i], star_erlogg[i], star_ermetal[i])
+        name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
 
-        parameters = [name, star_teff[i], star_erteff[i], star_logg[i], star_erlogg[i], star_metal[i], star_ermetal[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
+        parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
         #Save results
         _output(parameters=parameters)
         os.remove('parameters.html')
 
 elif args.plx_switch == 'off':
     print 'Mass and Radius from Torres calibration'
-
     _output(header=True, switch='off')
-
-    star = np.genfromtxt(args.name, dtype=None, skip_header=2, delimiter='\t', usecols=(0,1,2,3,4,5,6), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
-    star_name    = star['star']
-    star_teff    = star['teff']
-    star_erteff  = star['erteff']
-    star_logg    = star['logg']
-    star_erlogg  = star['erlogg']
-    star_metal   = star['feh']
-    star_ermetal = star['erfeh']
+    params = pd.read_csv(args.name, header=1, delimiter='\t', comment='#', usecols=(range(7)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh'])
 
     #Calculate parameters
-    for i, x in enumerate(star_name[:]):
+    for i, x in enumerate(params.star[:]):
         # Mass and radius from Torres calibration
-        name, Rt, dRt, Mcal, dMcal = mass_torres(star_name[i], star_teff[i], star_logg[i], star_metal[i], star_erteff[i], star_erlogg[i], star_ermetal[i])
-        parameters = [name, star_teff[i], star_erteff[i], star_logg[i], star_erlogg[i], star_metal[i], star_ermetal[i], Rt, dRt, Mcal, dMcal]
+        name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
+        parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], Rt, dRt, Mcal, dMcal]
         _output(parameters=parameters)
 
 else:
