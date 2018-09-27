@@ -4,9 +4,9 @@ mass_radius
 Get the stellar mass, radius and age from the Padova interface
 This code also includes mass and radius calculations using the Torres et al. 2010 calibration.  
 
-Create a file 'parameter_file.txt' and fill with the parameters separated by tabs.
+Create a file 'star' and fill with the parameters separated by tabs.
 
-**Important: The 'parameter_file.txt' must have a specific format. Tab separated values and 2 lines as header.**
+**Important: The 'star' must have a specific format. Tab separated values and 2 lines as header.**
 The columns should be in order of the following: 
 
     star name, temperature, error in temperature, gravity, error in gravity, metallicity, error in metallicity, V magnitude, error in V, parallax, error in parallax 
@@ -26,10 +26,10 @@ In case there is no information on the parallaxes, masses and radii will be calc
 
 Run in case parallaxes are included:
 
-    python mass_radius_age.py parameter_file.txt on 
+    python mass_radius_age.py star on 
 
 Run in case parallaxes are not included:
 
-    python mass_radius_age.py parameter_file.txt off
+    python mass_radius_age.py star off
     
 The user inputs the name of the file.
