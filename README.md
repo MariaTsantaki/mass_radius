@@ -13,7 +13,7 @@ In case gravity and error in gravity are not known fill the columns with zeros a
 This will work if all values are filled.
 
 The file 'star' is given as an example.
-This code will return the mass and radius from the Padova interface (http://stev.oapd.inaf.it/cgi-bin/param) in the 'stellar_characterization.dat' file.
+This code will return the mass and radius from the Padova interface (http://stev.oapd.inaf.it/cgi-bin/param_1.3) in the 'stellar_characterization.dat' file.
 
 Run:
 
