@@ -1,37 +1,28 @@
 #!/usr/bin/python
-import math
 import numpy as np
-import string
 import urllib
 import urllib.request
+import ssl
 import os
-import argparse
+import time
 import pandas as pd
+import re
+from html import unescape
 
-
-def _output(header=False, parameters=None, switch='on'):
+def _output(header=False, parameters=None):
     """Create the output file 'stellar_characterization.dat''
     Input
     -----
     header    - Only use True if this is for the file to be created
     """
 
-    if header and (switch == 'on'):
-        hdr = ['star_name star_teff star_erteff star_logg star_erlogg star_metal star_ermetal star_mass_padova star_ermass_padova star_radius_padova star_erradius_padova star_age star_erage star_logg_padova star_erlogg_padova logg_hip erlogg_hip Rt dRt Mcal dMcal']
-        if not os.path.isfile('stellar_characterization.dat'):
+    hdr = ['name,teff,erteff,metal,ermetal,mass_iso,ermass_iso,radius_iso,erradius_iso,age_iso,erage_iso,logg_iso,erlogg_iso,radius_cal,erradius_cal,mass_cal,ermass_cal,logg_trig,erlogg_trig']
+    if not os.path.isfile('stellar_characterization.dat'):
             with open('stellar_characterization.dat', 'w') as output:
-                output.write('\t'.join(hdr)+'\n')
-
-    elif header and (switch == 'off'):
-        hdr = 'star_name star_teff star_erteff star_logg star_erlogg star_metal star_ermetal Rt dRt Mcal dMcal'
-        if not os.path.isfile('stellar_characterization.dat'):
-            with open('stellar_characterization.dat', 'w') as output:
-                output.write('\t'.join(hdr)+'\n')
-
-    else:
-        with open('stellar_characterization.dat', 'a') as output:
-            output.write('\t'.join(map(str, parameters))+'\n')
-
+                output.write(','.join(hdr)+'\n')
+    parameters = [item for sublist in parameters for item in (sublist if isinstance(sublist, tuple) else (sublist,))]         
+    with open('stellar_characterization.dat', 'a') as output:
+        output.write(','.join(map(str, parameters))+'\n')
 
 def bcflow(teff):
     """Table 1 from Torres 2010: Bolometric Corrections by Flower (1996) as a Function of Temperature:
@@ -61,7 +52,6 @@ def bcflow(teff):
         bc = a[2] + (b[2]*lteff) + (c[2]*(lteff**2)) + (d[2]*(lteff**3)) + (e[1]*(lteff**4)) + (f[0]*(lteff)**5)
     return bc
 
-
 def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
     """Calculate the trigonometric logg and error"""
     #np.geterr()
@@ -76,57 +66,7 @@ def logg_trigomonetric(teff, mass, v, bc, par, dpar, dteff, dmass):
         dlogg = np.round(dlogg, 2)
     return logg, dlogg
 
-
-def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, metal, er_metal, minage, maxage):
-    """Returns mass, radius, and age from padova interface.
-       Enter star, vmag, parallax, er_parallax, temp, er_temp, metal, er_metal
-       Parallax is in mas.
-       Be careful with the constrains in age!
-    """
-
-    url = 'http://stev.oapd.inaf.it/cgi-bin/param_1.3'
-    #These are the parameters in the webpage to tune
-    form_data = {'param_version': '1.3', 'star_name': star, 'star_teff': int(temp), 'star_sigteff': int(er_temp), 'star_feh': round(metal,2), 'star_sigfeh': round(er_metal,2),  'star_vmag': round(vmag,3), 'star_sigvmag': round(er_vmag,3), 
-                 'star_parallax': round(parallax,3), 'star_sigparallax': round(er_parallax,3),  'isoc_kind': 'parsec_CAF09_v1.1', 'kind_interp': '1', 'kind_tpagb': '0', 'kind_pulsecycle': '0', 'kind_postagb': '-1', 
-                 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 'sfr_minage': minage, 'sfr_maxage': maxage, 'flag_sismo': '0', 'photsys_file': 'tab_mag_odfnew/tab_mag_ubvrijhk.dat', 
-                 'submit_form': 'Submit' }
-    print('Parameters for %s from Padova interface.' % star)
-
-    for key, value in form_data.items():
-        print('%s -> %s' % (key, value))
-    urllib.request.urlretrieve(url, 'parameters.html', lambda x,y,z:0, urllib.parse.urlencode(form_data).encode("utf-8"))
-
-    #write results
-    with open('parameters.html') as f:
-        
-        line = f.readlines()[15]
-
-    line = line.replace(' .<p>Results for ', '')
-    line = line.replace('Mass=', '')
-    line = line.replace('&plusmn;', ' , ')
-    line = line.replace(' ','')
-    line = line.replace('<i>R</i>=', '')
-    line = line.replace(':Age=', ',')
-    line = line.replace('<i>M</i>&#9737', '')
-    line = line.replace('<i>R</i>&#9737', '')
-    line = line.replace('log<i>g</i>=', '')
-    line = line.replace('(cgs)', '')
-    line = line.replace('Gyr', '')
-    line = line.split(',')
-
-    age =      float(line[1])
-    erage =    float(line[2])
-    mass =     float(line[3])
-    ermass =   float(line[4])
-    logg_p =   float(line[5])
-    erlogg_p = float(line[6])
-    radius =   float(line[7])
-    erradius = float(line[8])
-    print('---------------------%s done!----------------------------' % star)
-    return mass, ermass, radius, erradius, age, erage, logg_p, erlogg_p
-
-
-def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
+def mass_torres(T, logg, fe, dT, dlogg, dfe):
     """Calculate masses and radii from the calibration of Torres et al. 2010"""
 
     # coefficients
@@ -154,26 +94,131 @@ def mass_torres(hd, T, logg, fe, dT, dlogg, dfe):
     dMcal = np.round(dMcal,2)
     Rt    = np.round(Rt, 2)
     dRt   = np.round(dRt,2)
-    return hd, Rt, dRt, Mcal, dMcal
+    torres =  Rt, dRt, Mcal, dMcal
+    return torres
 
+def get_mass_radius(star, vmag, er_vmag, parallax, er_parallax, temp, er_temp, metal, er_metal, minage, maxage):
+    """Returns mass, radius, and age from padova interface.
+       Enter star, vmag, parallax, er_parallax, temp, er_temp, metal, er_metal
+       Parallax is in mas.
+       Be careful with the constrains in age!
+    """
+    if os.path.exists('parameters.html'):
+        os.remove('parameters.html')
+
+    url = 'https://stev.oapd.inaf.it/cgi-bin/param_1.3'
+    form_data = {
+        'param_version': '1.3', 'star_name': star, 
+        'star_teff': str(int(temp)), 
+        'star_sigteff': str(int(er_temp)), 
+        'star_feh': str(round(metal, 2)), 
+        'star_sigfeh': str(round(er_metal, 2)),  
+        'star_vmag': str(round(vmag, 2)), 
+        'star_sigvmag': str(round(er_vmag, 2)), 
+        'star_parallax': str(round(parallax, 3)), 
+        'star_sigparallax': str(round(er_parallax, 3)), 
+        'isoc_kind': 'parsec_CAF09_v1.1', 
+        'flag_sismo': '0', 
+        'kind_interp': '1', 
+        'kind_tpagb': '0', 
+        'kind_pulsecycle': '0', 
+        'kind_postagb': '-1', 
+        # 'imf_file': 'tab_imf/imf_chabrier_lognormal.dat', 
+        # 'sfr_file': 'tab_sfr/sfr_const_z008.dat', 
+        # 'photsys_file': 'tab_mag_odfnew/tab_mag_ubvrijhk.dat',
+        "sfr_maxage": "12.0e9", 
+        "sfr_minage": "0.1e9",
+        'submit_form': 'Submit' }
+
+    print('Parameters for %s from Padova interface.' % star)
+    for key, value in form_data.items():
+        print('%s -> %s' % (key, value))
+        
+    # Create an insecure context
+    context = ssl._create_unverified_context()
+
+    # Use the insecure context when making a request
+    response = urllib.request.urlopen(url, context=context)
+    urllib.request.urlretrieve(url, 'parameters.html', lambda x, y, z:0, urllib.parse.urlencode(form_data).encode("utf-8"))
+    return
+
+def read_params():
+
+    time.sleep(60)    
+    # Read the HTML file
+    with open("parameters.html", "r", encoding="utf-8") as f:
+        line = f.readlines()[15]
+
+    # Decode HTML entities
+    text = unescape(line)
+
+    # Extract the results
+    pattern = (
+    r"Results for\s+(.*?)\s*:"
+    r".*?Age\s*=\s*(.*?)\s*±\s*(.*?)\s*Gyr"
+    r".*?Mass\s*=\s*(.*?)\s*±\s*(.*?)\s*<i>"
+    r".*?log<i>g</i>\s*=\s*(.*?)\s*±\s*(.*?)\s*\(cgs\)"
+    r".*?<i>R</i>\s*=\s*(.*?)\s*±\s*(.*?)\s*<i>"
+    )
+    
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        ex = True
+        star, age, erage, mass, ermass, logg_p, erlogg_p, radius, erradius = match.groups()
+        star = star.strip()  
+        age, erage, mass, ermass, logg_p, erlogg_p, radius, erradius = map(float, [age, erage, mass, ermass, logg_p, erlogg_p, radius, erradius])
+        print('----------------Results for ' + str(star) + ' ----------------------------')
+        print(f"Mass   = {mass:.3f} ± {ermass:.3f} M_sun")
+        print(f"Radius = {radius:.3f} ± {erradius:.3f} R_sun")
+        print(f"Age    = {age:.3f} ± {erage:.3f} Gyr")
+        print(f"logg   = {logg_p:.3f} ± {erlogg_p:.3f} dex")
+    else:
+        ex = False
+        print("Could not find the stellar parameters in the HTML file.")
+        mass, ermass, radius, erradius, age, erage, logg_p, erlogg_p = (np.nan,) * 8 
+    print('--------------------------------------------------')
+        
+    results = mass, ermass, radius, erradius, age, erage, logg_p, erlogg_p
+    return results, ex
+    
 if __name__ == '__main__':
 
-    # params = pd.read_csv('star', delimiter='\t', comment='#', header=1, usecols=(range(11)), names = ['star', 'teff', 'erteff', 'logg', 'erlogg', 'feh', 'erfeh', 'vmag', 'ervmag', 'par', 'erpar'])
-    params = pd.read_csv('star', delimiter='\t')
-    print(params)
+    ssl._create_default_https_context = ssl._create_unverified_context
+    ffile = 'Ariel_stellar_catalogue_v0.1_20251001_param_input.csv'
+    params = pd.read_csv(ffile, comment='#')
 
-    for i, x in enumerate(params.star[:]):
-            #Padova mass, radius, age, and logg from isochrones
-            mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p = get_mass_radius(params.star[i], params.vmag[i],  params.ervmag[i], params.par[i], params.erpar[i], params.teff[i], params.erteff[i], params.feh[i], params.erfeh[i], params.sfr_minage[i], params.sfr_maxage[i])
+    for i, x in enumerate(params.name[:]):
+        # Initiate
+        ex = False        
+        results = (np.nan,) * 8
+        torres = (np.nan,) * 4
+        logg_hip, erlogg_hip = (np.nan,) * 2
+        name, vmag, evmag, parallax, eparallax, teff, eteff, feh, efeh = params.name[i], params.vmag[i], params.evmag[i], params.parallax[i], params.eparallax[i], params.teff[i], params.eteff[i], params.feh[i], params.efeh[i]
+
+        # Try 3 times
+        for attempt in range(3):            
+            # param mass, radius, age, and logg from isochrone [add a slight push]
+            get_mass_radius(name, vmag, evmag, parallax, eparallax, teff, eteff+attempt, feh, efeh, 0.1e9, 12.0e9)
+            results, ex = read_params()
+            if ex:
+                break
+
+        if not ex:
+            print('Try again with increased errors')
+            get_mass_radius(name, vmag, evmag, parallax, eparallax, teff, eteff+30, feh, efeh+0.03, 0.1e9, 12.0e9)
+            results, ex = read_params()
+   
+        if ex:
             #Trigonometric logg. Uses the get_mass_radius function
-            bc = bcflow(params.teff[i])
-            logg_hip, erlogg_hip = logg_trigomonetric(params.teff[i], mass_padova, params.vmag[i], bc, params.par[i], params.erpar[i], params.erteff[i], ermass_padova)
+            bc = bcflow(teff)
+            logg_hip, erlogg_hip = logg_trigomonetric(teff, results[0], vmag, bc, parallax, eparallax, eteff, results[1])
             #Mass and radius from Torres calibration
-            name, Rt, dRt, Mcal, dMcal = mass_torres(params.star[i], params.teff[i], params.logg[i], params.feh[i], params.erteff[i], params.erlogg[i], params.erfeh[i])
+            torres = mass_torres(teff, logg_hip, feh, eteff, erlogg_hip, efeh)
+        else: 
+            print('Unable to recover parameters')
 
-            #Save results
-            parameters = [name, params.teff[i], params.erteff[i], params.logg[i], params.erlogg[i], params.feh[i], params.erfeh[i], mass_padova, ermass_padova, radius_padova, erradius_padova, age, erage, logg_p, erlogg_p, logg_hip, erlogg_hip, Rt, dRt, Mcal, dMcal]
-            _output(parameters=parameters)
-            os.remove('parameters.html')
+        #Save results
+        parameters = [x, teff, eteff, feh, efeh, results, torres, logg_hip, erlogg_hip]
+        _output(parameters=parameters)
 
  
